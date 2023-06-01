@@ -143,8 +143,9 @@ variable "nameserver" {
   description = "nameserver"
 }
 
+
 variable "onboot" {
-  default     = ""
+  default     = true
   type        = bool
-  description = true
+  description = "whether or not to boot automatically at startup"
 }
