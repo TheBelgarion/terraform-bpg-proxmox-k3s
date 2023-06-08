@@ -10,7 +10,30 @@ export HTTPS_PROXY="${http_proxy}"
 export http_proxy="${http_proxy}"
 export https_proxy="${http_proxy}"
 
+check_apt_lock() {
+    local n=0
+    local max_attempts=10
+    local sleep_interval=5
+
+    until [ $n -ge $max_attempts ]
+    do
+        sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1
+        if [ $? -eq 1 ]; then
+            echo "Apt lock is available."
+            return 0
+        fi
+        n=$[$n+1]
+        echo "Waiting for apt lock... Retrying in $sleep_interval seconds."
+        sleep $sleep_interval
+    done
+
+    echo "Failed to acquire apt lock after $max_attempts attempts."
+    exit 1
+}
+
+
 mariadb() {
+    check_apt_lock
     sudo -E apt install mariadb-server -y
 
     # Make mariadb listen to all remote requests
@@ -33,6 +56,7 @@ mariadb() {
 }
 
 nginx() {
+    check_apt_lock
     sudo -E apt install nginx -y
 }
 
