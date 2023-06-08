@@ -85,6 +85,7 @@ resource "proxmox_vm_qemu" "k3s-worker" {
     type = "ssh"
     user = each.value.user
     host = each.value.ip
+    private_key = file(var.private_key_file)
   }
 
   provisioner "remote-exec" {

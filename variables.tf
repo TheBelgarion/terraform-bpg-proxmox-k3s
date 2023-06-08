@@ -8,6 +8,11 @@ variable "authorized_keys_file" {
   type        = string
 }
 
+variable "private_key_file" {
+  description = "Path to file containing private SSH keys"
+  type        = string
+}
+
 variable "network_gateway" {
   description = "IP address of the network gateway."
   type        = string

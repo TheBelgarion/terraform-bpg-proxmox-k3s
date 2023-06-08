@@ -65,6 +65,7 @@ resource "proxmox_vm_qemu" "k3s-support" {
     type = "ssh"
     user = var.support_node_settings.user
     host = local.support_node_ip
+    private_key = file(var.private_key_file)
   }
 
   provisioner "file" {
@@ -115,6 +116,7 @@ resource "null_resource" "k3s_nginx_config" {
     type = "ssh"
     user = var.support_node_settings.user
     host = local.support_node_ip
+    private_key = file(var.private_key_file)
   }
 
   provisioner "file" {
