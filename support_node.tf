@@ -58,7 +58,7 @@ resource "proxmox_vm_qemu" "k3s-support" {
 
   ipconfig0 = "ip=${local.support_node_ip}/${local.lan_subnet_cidr_bitnum},gw=${var.network_gateway}"
 
-  sshkeys = file(var.authorized_keys_file)
+  sshkeys = file(var.private_key)
 
   nameserver = var.nameserver
 

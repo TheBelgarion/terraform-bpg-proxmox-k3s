@@ -3,13 +3,8 @@ variable "proxmox_node" {
   type        = string
 }
 
-variable "authorized_keys_file" {
-  description = "Path to file containing public SSH keys for remoting into nodes."
-  type        = string
-}
-
 variable "private_key" {
-  description = "Path to file containing private SSH key for remoting into nodes. The corresponding public key must be found in authorized_keys_file."
+  description = "Path to file containing private SSH key for remoting into nodes. The corresponding public key must be found in private_key."
   type        = string
   default     = "~/.ssh/id_rsa"
 }

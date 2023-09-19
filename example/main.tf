@@ -29,7 +29,7 @@ module "k3s" {
   source  = "fvumbaca/k3s/proxmox"
   version = ">= 0.0.0, < 1" # Get latest 0.X release
 
-  authorized_keys_file = "authorized_keys"
+  private_key = "authorized_keys"
 
   proxmox_node = "my-proxmox-node"
 
