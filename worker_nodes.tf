@@ -8,10 +8,22 @@ locals {
     for pool in var.node_pools :
     [
       for i in range(pool.size) :
-      merge(pool, {
-        i        = i
-        ip       = cidrhost(pool.subnet, i)
-        template = coalesce(pool.template, var.node_template)
+      merge({
+        name           = pool.name
+        taints         = pool.taints
+        cores          = pool.cores
+        sockets        = pool.sockets
+        memory         = pool.memory
+        storage_type   = pool.storage_type
+        storage_id     = pool.storage_id
+        disk_size      = pool.disk_size
+        user           = pool.user
+        template       = coalesce(pool.template, var.node_template)
+        network_bridge = pool.network_bridge
+        network_tag    = pool.network_tag
+        }, {
+        i  = i
+        ip = cidrhost(pool.subnet, i)
       })
     ]
   ])
@@ -34,7 +46,6 @@ resource "proxmox_vm_qemu" "k3s-worker" {
   name        = "${var.cluster_name}-${each.key}"
 
   clone = each.value.template
-  onboot      = var.onboot
 
   pool = var.proxmox_resource_pool
 
@@ -44,6 +55,7 @@ resource "proxmox_vm_qemu" "k3s-worker" {
   memory  = each.value.memory
 
   agent = 1
+  onboot = var.onboot
 
   disk {
     type    = each.value.storage_type
@@ -82,10 +94,10 @@ resource "proxmox_vm_qemu" "k3s-worker" {
   nameserver = var.nameserver
 
   connection {
-    type = "ssh"
-    user = each.value.user
-    host = each.value.ip
-    private_key = file(var.private_key_file)
+    type        = "ssh"
+    user        = each.value.user
+    host        = each.value.ip
+    private_key = file(var.private_key)
   }
 
   provisioner "remote-exec" {
@@ -99,7 +111,7 @@ resource "proxmox_vm_qemu" "k3s-worker" {
         node_taints  = each.value.taints
         datastores   = []
 
-        http_proxy = var.http_proxy
+        http_proxy  = var.http_proxy
       })
     ]
   }

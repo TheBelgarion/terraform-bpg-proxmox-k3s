@@ -8,9 +8,10 @@ variable "authorized_keys_file" {
   type        = string
 }
 
-variable "private_key_file" {
-  description = "Path to file containing private SSH keys"
+variable "private_key" {
+  description = "Path to file containing private SSH key for remoting into nodes. The corresponding public key must be found in authorized_keys_file."
   type        = string
+  default     = "~/.ssh/id_rsa"
 }
 
 variable "network_gateway" {
@@ -65,6 +66,12 @@ variable "proxmox_resource_pool" {
   default     = ""
 }
 
+variable "onboot" {
+  type = bool
+  description = "Whether to have the cluster startup after the PVE node starts."
+  default = true
+}
+
 variable "support_node_settings" {
   type = object({
     cores          = optional(number, 2),
@@ -74,10 +81,10 @@ variable "support_node_settings" {
     storage_id     = optional(string, "local-lvm"),
     disk_size      = optional(string, "20G"),
     user           = optional(string, "k3s"),
-    network_bridge = optional(string, "vmbr0"),
-    network_tag    = optional(number, -1), 
     db_name        = optional(string, "k3s"),
     db_user        = optional(string, "k3s"),
+    network_bridge = optional(string, "vmbr0"),
+    network_tag    = optional(number, -1),
   })
 }
 
@@ -103,7 +110,7 @@ variable "master_node_settings" {
 
 variable "node_pools" {
   description = "Node pool definitions for the cluster."
-  type = list(object({
+  type        = list(object({
 
     name   = string,
     size   = number,
@@ -111,18 +118,21 @@ variable "node_pools" {
 
     taints = optional(list(string), []),
 
-    cores          = optional(number, 2),
-    sockets        = optional(number, 1),
-    memory         = optional(number, 4096),
-    storage_type   = optional(string, "scsi"),
-    storage_id     = optional(string, "local-lvm"),
-    disk_size      = optional(string, "20G"),
-    user           = optional(string, "k3s"),
+    cores        = optional(number, 2),
+    sockets      = optional(number, 1),
+    memory       = optional(number, 4096),
+    storage_type = optional(string, "scsi"),
+    storage_id   = optional(string, "local-lvm"),
+    disk_size    = optional(string, "20G"),
+    user         = optional(string, "k3s"),
+    network_tag  = optional(number, -1),
+
+    template = optional(string),
+
     network_bridge = optional(string, "vmbr0"),
-    network_tag    = optional(number, -1),
-    template = optional(string)
   }))
 }
+
 variable "api_hostnames" {
   description = "Alternative hostnames for the API server."
   type        = list(string)
@@ -135,7 +145,6 @@ variable "k3s_disable_components" {
   default     = []
 }
 
-
 variable "http_proxy" {
   default     = ""
   type        = string
@@ -146,11 +155,4 @@ variable "nameserver" {
   default     = ""
   type        = string
   description = "nameserver"
-}
-
-
-variable "onboot" {
-  default     = true
-  type        = bool
-  description = "whether or not to boot automatically at startup"
 }
