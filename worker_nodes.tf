@@ -77,7 +77,7 @@ resource "proxmox_vm_qemu" "k3s-worker" {
   lifecycle {
     ignore_changes = [
       ciuser,
-      sshkeys,
+      ssh_private_key,
       disk,
       network
     ]
@@ -89,7 +89,7 @@ resource "proxmox_vm_qemu" "k3s-worker" {
 
   ipconfig0 = "ip=${each.value.ip}/${local.lan_subnet_cidr_bitnum},gw=${var.network_gateway}"
 
-  sshkeys = file(var.private_key)
+  ssh_private_key = file(var.private_key)
 
   nameserver = var.nameserver
 

@@ -54,7 +54,7 @@ resource "proxmox_vm_qemu" "k3s-master" {
   lifecycle {
     ignore_changes       = [
       ciuser,
-      sshkeys,
+      ssh_private_key,
       disk,
       network
     ]
@@ -66,7 +66,7 @@ resource "proxmox_vm_qemu" "k3s-master" {
 
   ipconfig0 = "ip=${local.master_node_ips[count.index]}/${local.lan_subnet_cidr_bitnum},gw=${var.network_gateway}"
 
-  sshkeys = file(var.private_key)
+  ssh_private_key = file(var.private_key)
 
   nameserver = var.nameserver
 
