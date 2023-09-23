@@ -1,3 +1,9 @@
+variable "scsihw" {
+  description = "Proxmox node to create VMs on."
+  type        = string
+  default     = "virtio-scsi-pci"
+}
+
 variable "proxmox_node" {
   description = "Proxmox node to create VMs on."
   type        = string
