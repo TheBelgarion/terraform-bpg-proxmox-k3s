@@ -25,6 +25,7 @@ resource "proxmox_vm_qemu" "k3s-master" {
   clone = var.node_template
 
   pool = var.proxmox_resource_pool
+  scsihw = var.scsihw
 
   # cores = 2
   cores   = local.master_node_settings.cores

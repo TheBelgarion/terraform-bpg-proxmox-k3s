@@ -56,6 +56,7 @@ resource "proxmox_vm_qemu" "k3s-worker" {
 
   agent = 1
   onboot = var.onboot
+  scsihw = var.scsihw
 
   disk {
     type    = each.value.storage_type
