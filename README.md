@@ -1,6 +1,8 @@
-# terraform-proxmox-k3s
+# terraform-bpg-proxmox-k3s
 
 A module for spinning up an expandable and flexible K3s server for your HomeLab.
+
+adapted to work with 'bpg/proxmox' as 'telmate/proxmox' provider is not longer maintained!
 
 ## Features
 
