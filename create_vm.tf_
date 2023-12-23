@@ -1,0 +1,141 @@
+resource "macaddress" "k3s-support" {}
+
+locals {
+  support_node_settings  = var.support_node_settings
+  support_node_ip        = cidrhost(var.control_plane_subnet, 0)
+  lan_subnet_cidr_bitnum = split("/", var.lan_subnet)[1]
+}
+
+resource "proxmox_virtual_environment_vm" "create_vm" {
+  name        = "terraform-provider-proxmox-ubuntu-vm"
+  description = "Managed by Terraform"
+  tags        = ["terraform", "ubuntu"]
+
+  node_name = "first-node"
+  vm_id     = 4321
+
+  agent {
+    # read 'Qemu guest agent' section, change to true only when ready
+    enabled = false
+  }
+
+  startup {
+    order      = "3"
+    up_delay   = "60"
+    down_delay = "60"
+  }
+
+  disk {
+    datastore_id = "local-lvm"
+    file_id      = proxmox_virtual_environment_file.ubuntu_cloud_image.id
+    interface    = "scsi0"
+  }
+
+  initialization {
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+    }
+
+    user_account {
+      keys     = [trimspace(tls_private_key.ubuntu_vm_key.public_key_openssh)]
+      password = random_password.ubuntu_vm_password.result
+      username = "ubuntu"
+    }
+
+    user_data_file_id = proxmox_virtual_environment_file.cloud_config.id
+  }
+
+  network_device {
+    bridge = "vmbr0"
+  }
+
+  operating_system {
+    type = "l26"
+  }
+
+  tpm_state {
+    version = "v2.0"
+  }
+
+  serial_device {}
+}
+  connection {
+    type        = "ssh"
+    user        = local.support_node_settings.user
+    host        = local.support_node_ip
+    private_key = file(var.ssh_key_files.priv)
+  }
+
+  provisioner "file" {
+    destination = "/tmp/install.sh"
+    content = templatefile("${path.module}/scripts/install-support-apps.sh.tftpl", {
+      root_password = random_password.support-db-password.result
+
+      k3s_database = local.support_node_settings.db_name
+      k3s_user     = local.support_node_settings.db_user
+      k3s_password = random_password.k3s-master-db-password.result
+
+      http_proxy = var.http_proxy
+    })
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod u+x /tmp/install.sh",
+      "/tmp/install.sh",
+      "rm -r /tmp/install.sh",
+    ]
+  }
+}
+
+resource "random_password" "support-db-password" {
+  length           = 16
+  special          = false
+  override_special = "_%@"
+}
+
+resource "random_password" "k3s-master-db-password" {
+  length           = 16
+  special          = false
+  override_special = "_%@"
+}
+
+resource "null_resource" "k3s_nginx_config" {
+
+  depends_on = [
+    proxmox_vm_qemu.k3s-support
+  ]
+
+  triggers = {
+    config_change = filemd5("${path.module}/config/nginx.conf.tftpl")
+  }
+
+  connection {
+    type        = "ssh"
+    user        = local.support_node_settings.user
+    host        = local.support_node_ip
+    private_key = file(var.ssh_key_files.priv)
+  }
+
+  provisioner "file" {
+    destination = "/tmp/nginx.conf"
+    content = templatefile("${path.module}/config/nginx.conf.tftpl", {
+      k3s_server_hosts = [for ip in local.master_node_ips :
+        "${ip}:6443"
+      ]
+      k3s_nodes = concat(local.master_node_ips, [
+        for node in local.listed_worker_nodes :
+        node.ip
+      ])
+    })
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf",
+      "sudo systemctl restart nginx.service",
+    ]
+  }
+}

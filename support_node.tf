@@ -2,84 +2,62 @@
 resource "macaddress" "k3s-support" {}
 
 locals {
-  support_node_settings = var.support_node_settings
-  support_node_ip = cidrhost(var.control_plane_subnet, 0)
+  k3s-support     = merge(var.cluster.vm["support"], { network_device = { macaddr = upper(macaddress.k3s-support.address) } })
+  support_node_ip = cidrhost(var.cluster.vm["support"].initialization.ip_config.ipv4.address, 0)
 }
 
-locals {
-  lan_subnet_cidr_bitnum = split("/", var.lan_subnet)[1]
-}
 
-resource "proxmox_vm_qemu" "k3s-support" {
-  target_node = var.proxmox_node
-  name        = join("-", [var.cluster_name, "support"])
-
-  clone = var.node_template
-
-  pool = var.proxmox_resource_pool
-
-  # cores = 2
-  cores   = local.support_node_settings.cores
-  sockets = local.support_node_settings.sockets
-  memory  = local.support_node_settings.memory
-
-  agent = 1
-  onboot = var.onboot
-  scsihw = var.scsihw
-  
-  disk {
-    type    = local.support_node_settings.storage_type
-    storage = local.support_node_settings.storage_id
-    size    = local.support_node_settings.disk_size
-  }
-
-  network {
-    bridge    = local.support_node_settings.network_bridge
-    firewall  = true
-    link_down = false
-    macaddr   = upper(macaddress.k3s-support.address)
-    model     = "virtio"
-    queues    = 0
-    rate      = 0
-    tag       = local.support_node_settings.network_tag
-  }
+resource "proxmox_virtual_environment_vm" "k3s_cluster_support_vm" {
 
   lifecycle {
     ignore_changes = [
-      ciuser,
-      ssh_private_key,
-      disk,
-      network
     ]
   }
 
-  os_type = "cloud-init"
-
-  ciuser = local.support_node_settings.user
-
-  ipconfig0 = "ip=${local.support_node_ip}/${local.lan_subnet_cidr_bitnum},gw=${var.network_gateway}"
-
-  ssh_private_key = file(var.private_key)
-
-  nameserver = var.nameserver
-
   connection {
-    type = "ssh"
-    user = local.support_node_settings.user
-    host = local.support_node_ip
-    private_key = file("${var.private_key}")
+    type        = "ssh"
+    user        = local.k3s-support.initialization.user_account.username
+    host        = local.support_node_ip
+    private_key = file("${var.ssh_key_files.PRIV}")
   }
+
+  //@todo  name        = join("-", [var.cluster_name, "support"])
+  name        = "support"
+  description = local.k3s-support.description
+
+  node_name = local.k3s-support.node
+  vm_id     = local.k3s-support.vm_id
+  pool_id   = local.k3s-support.pool_id
+
+  clone          = local.k3s-support.clone
+  tags           = local.k3s-support.tags
+  startup        = local.k3s-support.startup
+  cpu            = local.k3s-support.cpu
+  memory         = local.k3s-support.memory
+  disk           = local.k3s-support.disk
+  initialization = local.k3s-support.initialization
+  network_device = local.k3s-support.network_device
+
+  agent {
+    enabled = local.k3s-support.agent_enabled
+  }
+
+  /* @todo
+  scsihw = var.scsihw
+  os_type = "cloud-init"
+  nameserver = var.nameserver
+ */
 
   provisioner "file" {
     destination = "/tmp/install.sh"
     content = templatefile("${path.module}/scripts/install-support-apps.sh.tftpl", {
       root_password = random_password.support-db-password.result
 
-      k3s_database = local.support_node_settings.db_name
-      k3s_user     = local.support_node_settings.db_user
+      k3s_database = local.k3s-support.parameter.db_name
+      k3s_user     = local.k3s-support.parameter.db_user
       k3s_password = random_password.k3s-master-db-password.result
-      
-      http_proxy  = var.http_proxy
+
+      //@todo      http_proxy = var.http_proxy
     })
   }
 
@@ -90,6 +68,8 @@ resource "proxmox_vm_qemu" "k3s-support" {
       "rm -r /tmp/install.sh",
     ]
   }
+
+
 }
 
 resource "random_password" "support-db-password" {
@@ -107,7 +87,7 @@ resource "random_password" "k3s-master-db-password" {
 resource "null_resource" "k3s_nginx_config" {
 
   depends_on = [
-    proxmox_vm_qemu.k3s-support
+    proxmox_virtual_environment_vm.k3s_cluster_support_vm
   ]
 
   triggers = {
@@ -115,12 +95,13 @@ resource "null_resource" "k3s_nginx_config" {
   }
 
   connection {
-    type = "ssh"
-    user = local.support_node_settings.user
-    host = local.support_node_ip
-    private_key = file("${var.private_key}")
+    type        = "ssh"
+    user        = local.k3s-support.initialization.user_account.username
+    host        = local.support_node_ip
+    private_key = file("${var.ssh_key_files.PRIV}")
   }
 
+  /*  @todo
   provisioner "file" {
     destination = "/tmp/nginx.conf"
     content = templatefile("${path.module}/config/nginx.conf.tftpl", {
@@ -133,7 +114,7 @@ resource "null_resource" "k3s_nginx_config" {
       ])
     })
   }
-
+ */
   provisioner "remote-exec" {
     inline = [
       "sudo mv /tmp/nginx.conf /etc/nginx/nginx.conf",

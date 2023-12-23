@@ -1,23 +1,23 @@
 terraform {
   required_providers {
     proxmox = {
-      source = "Telmate/proxmox"
-      version = "2.9.3"
+      source  = "bpg/proxmox"
+      version = "0.41.0"
     }
 
     macaddress = {
-      source = "ivoronin/macaddress"
+      source  = "ivoronin/macaddress"
       version = "0.3.0"
     }
   }
 }
 
-provider proxmox {
+provider "proxmox" {
   pm_log_enable = true
-  pm_log_file = "terraform-plugin-proxmox.log"
-  pm_debug = true
+  pm_log_file   = "terraform-plugin-proxmox.log"
+  pm_debug      = true
   pm_log_levels = {
-    _default = "debug"
+    _default    = "debug"
     _capturelog = ""
   }
 
@@ -33,20 +33,20 @@ module "k3s" {
 
   proxmox_node = "my-proxmox-node"
 
-  node_template = "ubuntu-template"
+  node_template         = "ubuntu-template"
   proxmox_resource_pool = "my-k3s"
 
   network_gateway = "192.168.0.1"
-  lan_subnet = "192.168.0.0/24"
+  lan_subnet      = "192.168.0.0/24"
 
   support_node_settings = {
-    cores = 2
+    cores  = 2
     memory = 4096
   }
 
   master_nodes_count = 2
   master_node_settings = {
-    cores = 2
+    cores  = 2
     memory = 4096
   }
 
@@ -64,7 +64,7 @@ module "k3s" {
 }
 
 output "kubeconfig" {
-  value = module.k3s.k3s_kubeconfig
+  value     = module.k3s.k3s_kubeconfig
   sensitive = true
 }
 
